@@ -25,6 +25,7 @@
 
 	//Turn yellow LED on
 	//Turn motor off
+	//Record time and date of when motor turns off
 	//No temp or water monitoring
 	//Monitor start button using an ISR
 	//If start button is pressed
@@ -33,7 +34,7 @@
 
 	//Turn green LED on
 	//Turn motor off
-	//Record time stamp of transition times
+	//Record time and date of when motor turns off
 	//Continuously monitor water level
 	//Display temperature and humidity on LCD
 	//If Temperature > Threshold
@@ -45,6 +46,7 @@
 
 	//Turn on red LED
 	//Turn Motor off regardless of temperature
+	//Record time and date of when motor turns off
 	//Display message "Water level is too low"
 	//If water level is above threshold and reset button pressed
 		//Change state to Idle
@@ -55,6 +57,7 @@
 
 	//Turn blue LED on
 	//Turn motor on
+	//Record time and date of when motor turns on
 	//Display temperature and humidity on LCD
 	//If temperature < or = threshold
 		//Change state to Idle
@@ -62,7 +65,8 @@
 		//Transition to Error State
 	//If stop button is pressed
 		//Change state to Disabled
-
+	//Depending on value of potentiometer
+		//Adjust stepper motor for angle of vent
 
 
 
