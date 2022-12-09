@@ -1,3 +1,5 @@
+
+
 /* NEED:
 
 [Lib] - Can use Arduino Library
@@ -9,6 +11,7 @@
 	- Button or Potentiometer
 - [None] Red, Blue, Yellow, and Green LED's
 - [Lib] LCD
+ 
 - [Lib/None] Water level sensor
 	- Use either an interrupt from the comparator
 	- Or Sample using the ADC (No ADC library)
@@ -19,188 +22,246 @@
 
 
 
-//Define Pointers
 //Green LED on Pin 2
 //Yellow LED on Pin 3
 //Red LED on Pin 4
 //Blue LED on Pin 5
-
-
-
 //Fan Motor on Pin 6
 //Stepper Motor on Pins 38-32 Even #'s
-	//Arduino Library
-//LCD on Pins 53 - 23 Odd #'s
-	//Arduino Library
-//Water Level Sensor on Pins 8, 9, 10
-	//Arduino Library
-//Temperature/Humidity Sensor on Pins 12, 13, 7
-	//Arduino Library
-//Button on Pin 11
-//Real-Time Clock Module on Pins 22, 24, 26 (A,L,W)
+//LCD on Pins 12, 11, 7, 8, 10, 9
+//Water Level Sensor on Pin A 0
+//Temperature/Humidity Sensor on Pins 13
+//Button on Pin 52
+//Real-Time Clock Module on Pins SDA, SCL
+
+
 #include "RTClib.h"
+#include <Stepper.h>
+#include <LiquidCrystal.h>
+LiquidCrystal lcd(12, 11, 5, 4, 3, 7);
+#include <DHT.h>
+#include <DHT_U.h>
+#define DHTPIN 13
+#define DHTTYPE DHT11
+DHT dht(DHTPIN, DHTTYPE);
 RTC_DS1307 rtc;
+//Stepper motor
+const int stepsPerRevolution = 2048;
+Stepper myStepper = Stepper(stepsPerRevolution, 38, 36, 34, 32);
 
-char state = 'I';
-
+int buttonState = 0;
+volatile char state = 'R';
+int Temperature, Humidity;
+int TemperatureThreshold = 26;
+int HuidityThreshold = 10;
+volatile bool restart_loop;
 
 void setup(){
 
 //Setting Inputs/Outputs
   //LED's
-  DDRE |= 0b00111000;
-  DDRG |= 0b00100000;
+  DDRA |= 0b01010101;
+  //Fan Motor
   DDRH |= 0b00001000;
-	//Fan Motor
-	//*ddr_h |= 0x80;
-	//Stepper Motor
-	//LCD
+  //Stepper Motor
+  myStepper.setSpeed(5);
+  //Start Serial Communication
+  Serial.begin(9600);
+  //ISR Button
+  DDRE |= 0b00000000;
+  PORTE |= 0b00010000;
+  attachInterrupt(0, pin_ISR, CHANGE);
+  //LCD
+  lcd.begin(16, 2);
+  lcd.print("Temp: ");
+  lcd.setCursor(0, 1);
+  lcd.print("Humidity: ");  
 	//Water Level Sensor
 	//Temperature/Humidity Sensor
+  dht.begin();  
   //Real time clock
   if (! rtc.begin()) {
   Serial.println("Couldn't find RTC");
   while (1);
 }
 
-rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
+#ifndef ESP8266
+	while(!Serial);
+#endif
 
-	
-//Start Serial Communication (Library?)
-	Serial.begin(9600);
-
-
+	if(! rtc.begin()) {
+		Serial.println("Couldn't find RTC");
+	}
+	rtc.adjust(DateTime(2022,12,12,17,45,0));
 }
 
 
-
 void loop(){
+restart_loop = false;
 
-
+DateTime now = rtc.now();
+while(!restart_loop){
   switch(state){
     case 'D':{
 
-    	//Turn yellow LED on
-      	PORTE |= 0b00100000;
-    	//Turn all other LED's off
-      	PORTE &= 0b00100000;
-        PORTG &= 0b00100000;
+      	PORTA = 0b00010000;
 
     	//Turn motor off
     	PORTH &= 0b00000000;
-//    	//Record time and date of when motor turns off
+    	//Record time and date of when motor turns off
           DateTime now = rtc.now();
           Serial.print("Date & Time: ");
-         
-          Serial.print(now.day(), DEC);
-          Serial.print(" (");
-          
+          Serial.print(now.month(), DEC);
+	  Serial.print('/');
+          Serial.println(now.day(), DEC);      
           Serial.print(now.hour(), DEC);
           Serial.print(':');
           Serial.print(now.minute(), DEC);
+	  Serial.println(now.second(), DEC);
 
-//    		//Arduino Real-time Clock Module
-//    		//Display in serial monitor
-//    		Serial.println("...");
-//    	//No temp or water monitoring
-//    	//Monitor start button using an ISR
-//    	//If start button is pressed
-//    	if(StartButton == 1){
-//    		//Change state to Idle
-//    	}
+
+
         break;
     }
     case 'I':{
 
-    //Turn green LED on
-      PORTE = 0b00010000;
-    //Turn all other LED's off
-      PORTG = 0b0010000;
+    PORTA = 0b00000100;
     //Turn motor off
-      PORTH &= 0b00000000;
+      PORTH &= 0b0000000;
     	//Record time and date of when motor turns off
-    		//Arduino Real-time Clock Module
-    		//Display in serial monitor
-    		//Serial.println("...");
-    	//Continuously monitor water level
-    		//Arduino Library
+      Serial.print("Date & Time: ");
+      Serial.print(now.month(), DEC);
+      Serial.print('/');
+      Serial.println(now.day(), DEC);      
+      Serial.print(now.hour(), DEC);
+      Serial.print(':');
+      Serial.print(now.minute(), DEC);
+      Serial.println(now.second(), DEC); 
+    		
     	//Display temperature and humidity on LCD
-    		//Arduino Library
-//    	//If Temperature > Threshold
-//    	if(){
-//    		//Change state to Running
-//       state = Running;
-//    	}
-//    	//If water level < or = Threshold
-//    	if(){
-//    		//Change state to Error
-//       state = Error;
-//    	}
+          delay(2000);
+        float h = dht.readHumidity();
+        float t = dht.readTemperature();
+       	Temperature = t;
+	Humidity = h;
+	lcd.setCursor(6, 0);
+        lcd.print(t);
+        lcd.print((char)223);
+        lcd.print("C");
+        lcd.setCursor(10, 1);
+        lcd.print(h);
+        lcd.print("%");
+        Serial.print("Humidity: ");
+        Serial.print(h);
+        Serial.print(" %\t");
+        Serial.print("Temperature: ");
+        Serial.print(t);
+        Serial.print((char)223);
+        Serial.println(" C");
+    	if(Temperature > TemperatureThreshold){
+	       state = 'R';
+    	}
+    	if(analogRead(A0) <= 30){
+	       state = 'R';
+    	}
+		
+
         break;
     }
     case 'E':{
-    	//Turn on red LED
-    	PORTG |= 0b00100000;
-      //Turn all other LED's off
-    	PORTE &= 0b00000000;
+    	PORTA = 0b01000000;
     	//Turn Motor off regardless of temperature
     	PORTH &= 0b00000000;
-//    	//Record time and date of when motor turns off
-//    		//Arduino Real-time Clock Module
-//    		//Display in serial monitor
-//    		Serial.println("...");
-//    	//Display "Water level is too low" on LCD and serial monitor
-//    	Serial.println("Water level is too low");
-//    		//Arduino LCD Library
-//    	//If water level is above threshold and reset button pressed
-//    	if(WaterLevel > WaterThreshold && ResetButton == 1){
-//    		//Change state to Idle
-//        state = Idle;
-//    	}
-//    	//If stop button is pressed
-//    	if(StopButton == 1){
-//    		//Change state to Disabled
-//        state = Disabled;
-//    	}
+    	//Record time and date of when motor turns off
+	Serial.print("Date & Time: ");
+        Serial.print(now.month(), DEC);
+        Serial.print('/');
+        Serial.println(now.day(), DEC);      
+        Serial.print(now.hour(), DEC);
+        Serial.print(':');
+        Serial.print(now.minute(), DEC);
+        Serial.println(now.second(), DEC); 
+    	//Display "Water level is too low" on LCD and serial monitor
+      if (analogRead(A0) < 80) {
+        Serial.println("Water Level is too low");
+    		//Arduino LCD Library
+       //&& RESET BUTTON
+    	if(analogRead(A0) > 80){
+	        state = 'I';
+    	}
+
+
       break;
     }
     case 'R':{
 
-    	//Turn blue LED on
-    	PORTE |= 0b00001000;
-    	//Turn all other LED's off
-    	PORTE &= 0b00001000;
-      PORTG &= 0b00000000;
+    	PORTA = 0b00000001;
     	//Turn motor on
       PORTH |= 0b00001000;
-//    	//Record time and date of when motor turns on
-//    		//Arduino Real-time Clock Module
-//    		//Display in serial monitor
-//    		Serial.println("...");
-//    	//Display temperature and humidity on LCD
-//    		//Arduino LCD Library
-//    	//If temperature < or = threshold
-//    	if(Temperature <= TempThreshold){
-//    		//Change state to Idle
-//        state = Idle;
-//    	}
-//    	//If water < Threshold
-//    	if(WaterLevel < WaterThreshold){
-//    		//Transition to Error State
-//       state = Error;
-//    	}
-//    	//If stop button is pressed
-//    	if(StopButton == 1){
-//    		//Change state to Disabled
-//        state = Disabled;
-//    	}
+    	//Record time and date of when motor turns on
+     Serial.println("Fan turned on");
+	Serial.print("Date & Time: ");
+        Serial.print(now.month(), DEC);
+        Serial.print('/');
+        Serial.println(now.day(), DEC);      
+        Serial.print(now.hour(), DEC);
+        Serial.print(':');
+        Serial.print(now.minute(), DEC);
+        Serial.println(now.second(), DEC); 
+
+    	//Display temperature and humidity on LCD
+          delay(2000);
+        float h = dht.readHumidity();
+        float t = dht.readTemperature();
+        lcd.setCursor(6, 0);
+        lcd.print(t);
+        lcd.print((char)223);
+        lcd.print("C");
+        lcd.setCursor(10, 1);
+        lcd.print(h);
+        lcd.print("%");
+        Serial.print("Humidity: ");
+        Serial.print(h);
+        Serial.print(" %\t");
+        Serial.print("Temperature: ");
+        Serial.print(t);
+        Serial.print((char)223);
+        Serial.println(" C");
+    	if(Temperature <= 24){
+	        state = 'I';
+    	}
+     	if (analogRead(A0) > 80) {
+        Serial.println("Water Level is too high");
+        } 
+      	if (analogRead(A0) < 80) {
+        Serial.println("Water Level is too low");
+          state = 'E';
+        }
+
+
       break;
     }
   }    
-}
+  }
+
 
 //Globally
 
 	//Depending on value of potentiometer
 		//Adjust stepper motor for angle of vent
 			//Arduino Library
+     myStepper.step(stepsPerRevolution);
+}
+}
+
+void pin_ISR(){
+  if(state == 'D'){
+    state = 'I';
+    restart_loop = true;
+  }
+  else{
+    state = 'D';
+    restart_loop = true;
+  }
+ 
+}
