@@ -52,7 +52,8 @@ LiquidCrystal lcd(12, 11, 5, 4, 3, 2);
 #define DHTTYPE DHT11
 DHT dht(DHTPIN, DHTTYPE);
 RTC_DS1307 rtc;
-
+//Stepper motor
+Stepper myStepper = Stepper(stepsPerRevolution, 31, 33, 35, 37);
 
 int buttonState = 0;
 char state = 'I';
@@ -61,16 +62,18 @@ char state = 'I';
 void setup(){
 
 //Setting Inputs/Outputs
-  //LED's
+  //LED's and button
   DDRE |= 0b00111000;
   DDRG |= 0b00100000;
   DDRH |= 0b00001000;
 	//Fan Motor
+  DDRB |= 0b10000000;
 	//*ddr_h |= 0x80;
 	//Stepper Motor
-	//LCD
-//Start Serial Communication (Library?)
+  myStepper.setSpeed(5);
+  //Start Serial Communication
   Serial.begin(9600);
+  //LCD
   lcd.begin(16, 2);
   lcd.print("Temp: ");
   lcd.setCursor(0, 1);
@@ -108,23 +111,22 @@ void loop(){
         PORTG &= 0b00100000;
 
     	//Turn motor off
-    	PORTH &= 0b00000000;
-//    	//Record time and date of when motor turns off
+    	PORTB &= 0b00000000;
+    	//Record time and date of when motor turns off
           DateTime now = rtc.now();
           Serial.print("Date & Time: ");
           Serial.print(now.month(), DEC);
-	  Serial.print('/');
+	        Serial.print('/');
           Serial.println(now.day(), DEC);      
           Serial.print(now.hour(), DEC);
           Serial.print(':');
           Serial.print(now.minute(), DEC);
-	  Serial.println(now.second(), DEC);
+	        Serial.println(now.second(), DEC);
 
-//    	//No temp or water monitoring
-//    	//Monitor start button using an ISR
-//    	//If start button is pressed
+    	//Monitor start button using an ISR
+    	//If start button is pressed
 //    	if(StartButton == 1){
-//    		//Change state to Idle
+    		//Change state to Idle
 //    	}
         break;
     }
@@ -135,7 +137,7 @@ void loop(){
     //Turn all other LED's off
       PORTG = 0b0010000;
     //Turn motor off
-      PORTH &= 0b00000000;
+      PORTB &= 0b00000000;
     	//Record time and date of when motor turns off
     buttonState = digitalRead(8);   
     if (buttonState == HIGH) {   //Fan button read and print 
@@ -191,14 +193,14 @@ void loop(){
         Serial.print((char)223);
         Serial.println(" C");
     		//Arduino Library
-//    	//If Temperature > Threshold
+    	//If Temperature > Threshold
 //    	if(){
-//    		//Change state to Running
+    		//Change state to Running
 //       state = Running;
 //    	}
-//    	//If water level < or = Threshold
+    	//If water level < or = Threshold
 //    	if(){
-//    		//Change state to Error
+    		//Change state to Error
 //       state = Error;
 //    	}
         break;
@@ -209,7 +211,7 @@ void loop(){
       //Turn all other LED's off
     	PORTE &= 0b00000000;
     	//Turn Motor off regardless of temperature
-    	PORTH &= 0b00000000;
+    	PORTB &= 0b00000000;
 //    	//Record time and date of when motor turns off
 	Serial.print("Date & Time: ");
         Serial.print(now.month(), DEC);
@@ -245,7 +247,7 @@ void loop(){
     	PORTE &= 0b00001000;
       PORTG &= 0b00000000;
     	//Turn motor on
-      PORTH |= 0b00001000;
+      PORTB |= 0b10000000;
 //    	//Record time and date of when motor turns on
 	Serial.print("Date & Time: ");
         Serial.print(now.month(), DEC);
@@ -290,3 +292,4 @@ void loop(){
 	//Depending on value of potentiometer
 		//Adjust stepper motor for angle of vent
 			//Arduino Library
+     myStepper.step(stepsPerRevolution);
