@@ -28,26 +28,26 @@
 //Blue LED on Pin 5
 //Fan Motor on Pin 6
 //Stepper Motor on Pins 38-32 Even #'s
-//LCD on Pins 53 - 23 Odd #'s
-//Water Level Sensor on Pins 8, 9, 10
-//Temperature/Humidity Sensor on Pins 12, 13, 7
-//Button on Pin 11
-//Real-Time Clock Module on Pins 22, 24, 26 (A,L,W)
+//LCD on Pins 12, 11, 7, 8, 10, 9
+//Water Level Sensor on Pin A 0
+//Temperature/Humidity Sensor on Pins 13
+//Button on Pin 52
+//Real-Time Clock Module on Pins SDA, SCL
 
 
 #include "RTClib.h"
 RTC_DS1307 rtc;
 #include <Stepper.h>
 #include <LiquidCrystal.h>
-LiquidCrystal lcd(12, 11, 5, 4, 3, 2);
+LiquidCrystal lcd(12, 11, 7, 8, 10, 9);
 #include <DHT.h>
 #include <DHT_U.h>
-#define DHTPIN 2
+#define DHTPIN 13
 #define DHTTYPE DHT11
 DHT dht(DHTPIN, DHTTYPE);
 RTC_DS1307 rtc;
 //Stepper motor
-Stepper myStepper = Stepper(stepsPerRevolution, 31, 33, 35, 37);
+Stepper myStepper = Stepper(stepsPerRevolution, 38, 36, 34, 32);
 
 int buttonState = 0;
 char state = 'I';
