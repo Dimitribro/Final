@@ -22,25 +22,19 @@
 
 
 
-//Define Pointers
 //Green LED on Pin 2
 //Yellow LED on Pin 3
 //Red LED on Pin 4
 //Blue LED on Pin 5
-
-
-
 //Fan Motor on Pin 6
 //Stepper Motor on Pins 38-32 Even #'s
-	//Arduino Library
 //LCD on Pins 53 - 23 Odd #'s
-	//Arduino Library
 //Water Level Sensor on Pins 8, 9, 10
-	//Arduino Library
 //Temperature/Humidity Sensor on Pins 12, 13, 7
-	//Arduino Library
 //Button on Pin 11
 //Real-Time Clock Module on Pins 22, 24, 26 (A,L,W)
+
+
 #include "RTClib.h"
 RTC_DS1307 rtc;
 #include <Stepper.h>
@@ -57,7 +51,9 @@ Stepper myStepper = Stepper(stepsPerRevolution, 31, 33, 35, 37);
 
 int buttonState = 0;
 char state = 'I';
-
+int Temperature, Humidity;
+int TemperatureThreshold = 20;
+int HuidityThreshold = 10;
 
 void setup(){
 
@@ -66,10 +62,9 @@ void setup(){
   DDRE |= 0b00111000;
   DDRG |= 0b00100000;
   DDRH |= 0b00001000;
-	//Fan Motor
+  //Fan Motor
   DDRB |= 0b10000000;
-	//*ddr_h |= 0x80;
-	//Stepper Motor
+  //Stepper Motor
   myStepper.setSpeed(5);
   //Start Serial Communication
   Serial.begin(9600);
@@ -104,7 +99,7 @@ void loop(){
   switch(state){
     case 'D':{
 
-    	//Turn yellow LED on
+	state = I;
       	PORTE |= 0b00100000;
     	//Turn all other LED's off
       	PORTE &= 0b00100000;
@@ -116,18 +111,18 @@ void loop(){
           DateTime now = rtc.now();
           Serial.print("Date & Time: ");
           Serial.print(now.month(), DEC);
-	        Serial.print('/');
+	  Serial.print('/');
           Serial.println(now.day(), DEC);      
           Serial.print(now.hour(), DEC);
           Serial.print(':');
           Serial.print(now.minute(), DEC);
-	        Serial.println(now.second(), DEC);
+	  Serial.println(now.second(), DEC);
 
     	//Monitor start button using an ISR
-    	//If start button is pressed
-//    	if(StartButton == 1){
-    		//Change state to Idle
-//    	}
+		state = I;
+
+
+
         break;
     }
     case 'I':{
@@ -139,8 +134,6 @@ void loop(){
     //Turn motor off
       PORTB &= 0b00000000;
     	//Record time and date of when motor turns off
-    buttonState = digitalRead(8);   
-    if (buttonState == HIGH) {   //Fan button read and print 
       Serial.print("Date & Time: ");
       Serial.print(now.month(), DEC);
       Serial.print('/');
@@ -150,21 +143,102 @@ void loop(){
       Serial.print(now.minute(), DEC);
       Serial.println(now.second(), DEC); 
       Serial.println("Fan turned on");
-    }
-    else {
-      Serial.print("Date & Time: ");
-      Serial.print(now.month(), DEC);
-      Serial.print('/');
-      Serial.println(now.day(), DEC);      
-      Serial.print(now.hour(), DEC);
-      Serial.print(':');
-      Serial.print(now.minute(), DEC);
-      Serial.println(now.second(), DEC);
-      Serial.println("Fan turned off");
-    }       
     		
     	//Continuously monitor water level
-    		//Arduino Library
+        lcd.setCursor(0, 0);
+        lcd.print("Water Level: ");
+        lcd.print(analogRead(A0));
+        lcd.print(" ");
+        lcd.setCursor(0, 1);
+        lcd.print("Water Level: ");
+        lcd.print(analogRead(A1));
+        lcd.print(" ");
+        delay(1000);
+    	//Display temperature and humidity on LCD
+          delay(2000);
+        float h = dht.readHumidity();
+        float t = dht.readTemperature();
+       	Temperature = t;
+	Humidity = h;
+	lcd.setCursor(6, 0);
+        lcd.print(t);
+        lcd.print((char)223);
+        lcd.print("C");
+        lcd.setCursor(10, 1);
+        lcd.print(h);
+        lcd.print("%");
+        Serial.print("Humidity: ");
+        Serial.print(h);
+        Serial.print(" %\t");
+        Serial.print("Temperature: ");
+        Serial.print(t);
+        Serial.print((char)223);
+        Serial.println(" C");
+    	if(Temperature > Temperature Threshold){
+	       state = R;
+    	}
+    	if(WaterLevel <= WaterThreshold){
+	       state = R;
+    	}
+
+	//ISR
+		state = D;
+
+
+        break;
+    }
+    case 'E':{
+    	//Turn on red LED
+    	PORTG |= 0b00100000;
+      //Turn all other LED's off
+    	PORTE &= 0b00000000;
+    	//Turn Motor off regardless of temperature
+    	PORTB &= 0b00000000;
+    	//Record time and date of when motor turns off
+	Serial.print("Date & Time: ");
+        Serial.print(now.month(), DEC);
+        Serial.print('/');
+        Serial.println(now.day(), DEC);      
+        Serial.print(now.hour(), DEC);
+        Serial.print(':');
+        Serial.print(now.minute(), DEC);
+        Serial.println(now.second(), DEC); 
+    	//Display "Water level is too low" on LCD and serial monitor
+      if (analogRead(A1) < 30) {
+        Serial.println("Water Level is too low");
+    		//Arduino LCD Library
+    	if(WaterLevel > WaterThreshold && ResetButton == 1){
+	        state = I;
+    	}
+
+
+	//ISR
+	        state = D;
+
+
+
+      break;
+    }
+    case 'R':{
+
+    	//Turn blue LED on
+    	PORTE |= 0b00001000;
+    	//Turn all other LED's off
+    	PORTE &= 0b00001000;
+      PORTG &= 0b00000000;
+    	//Turn motor on
+      PORTB |= 0b10000000;
+    	//Record time and date of when motor turns on
+	Serial.print("Date & Time: ");
+        Serial.print(now.month(), DEC);
+        Serial.print('/');
+        Serial.println(now.day(), DEC);      
+        Serial.print(now.hour(), DEC);
+        Serial.print(':');
+        Serial.print(now.minute(), DEC);
+        Serial.println(now.second(), DEC); 
+    	//Display temperature and humidity on LCD
+    		//Arduino LCD Library
         lcd.setCursor(0, 0);
         lcd.print("Water Level: ");
         lcd.print(analogRead(A0));
@@ -192,95 +266,26 @@ void loop(){
         Serial.print(t);
         Serial.print((char)223);
         Serial.println(" C");
-    		//Arduino Library
-    	//If Temperature > Threshold
-//    	if(){
-    		//Change state to Running
-//       state = Running;
-//    	}
-    	//If water level < or = Threshold
-//    	if(){
-    		//Change state to Error
-//       state = Error;
-//    	}
-        break;
-    }
-    case 'E':{
-    	//Turn on red LED
-    	PORTG |= 0b00100000;
-      //Turn all other LED's off
-    	PORTE &= 0b00000000;
-    	//Turn Motor off regardless of temperature
-    	PORTB &= 0b00000000;
-//    	//Record time and date of when motor turns off
-	Serial.print("Date & Time: ");
-        Serial.print(now.month(), DEC);
-        Serial.print('/');
-        Serial.println(now.day(), DEC);      
-        Serial.print(now.hour(), DEC);
-        Serial.print(':');
-        Serial.print(now.minute(), DEC);
-        Serial.println(now.second(), DEC); 
-//    		Serial.println("...");
-//    	//Display "Water level is too low" on LCD and serial monitor
-//     Serial.println("Water level is too low");
-      if (analogRead(A1) < 30) {
-        Serial.println("Water Level is too low");
-//    		//Arduino LCD Library
-//    	//If water level is above threshold and reset button pressed
-//    	if(WaterLevel > WaterThreshold && ResetButton == 1){
-//    		//Change state to Idle
-//        state = Idle;
-//    	}
-//    	//If stop button is pressed
-//    	if(StopButton == 1){
-//    		//Change state to Disabled
-//        state = Disabled;
-//    	}
-      break;
-    }
-    case 'R':{
-
-    	//Turn blue LED on
-    	PORTE |= 0b00001000;
-    	//Turn all other LED's off
-    	PORTE &= 0b00001000;
-      PORTG &= 0b00000000;
-    	//Turn motor on
-      PORTB |= 0b10000000;
-//    	//Record time and date of when motor turns on
-	Serial.print("Date & Time: ");
-        Serial.print(now.month(), DEC);
-        Serial.print('/');
-        Serial.println(now.day(), DEC);      
-        Serial.print(now.hour(), DEC);
-        Serial.print(':');
-        Serial.print(now.minute(), DEC);
-        Serial.println(now.second(), DEC); 
-//    	//Display temperature and humidity on LCD
-//    		//Arduino LCD Library
-//    	//If temperature < or = threshold
-//    	if(Temperature <= TempThreshold){
-//    		//Change state to Idle
-//        state = Idle;
-//    	}
-//    	//If water < Threshold
-      if (analogRead(A0) > 100) {
+    	if(Temperature <= TempThreshold){
+	        state = Idle;
+    	}
+     	if (analogRead(A0) > 100) {
         Serial.println("Water Level is too high");
         } 
-      if (analogRead(A1) < 30) {
+      	if (analogRead(A1) < 30) {
         Serial.println("Water Level is too low");
         }
 
-//    	if(WaterLevel < WaterThreshold){
-//    		//Transition to Error State
-//       state = Error;
-//    	}
-//    	//If stop button is pressed
-//    	if(StopButton == 1){
-//    		//Change state to Disabled
-//        state = Disabled;
-//    	}
+    	if(WaterLevel < WaterThreshold){
+	       state = E;
+    	}
+
+
+	//ISR
+	        state = D;
+
+
+
       break;
     }
   }    
